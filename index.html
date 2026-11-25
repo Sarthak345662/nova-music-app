@@ -1,0 +1,129 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><title>Nova Music</title>
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#040a18"><link rel="manifest" href="manifest.webmanifest"><link rel="icon" href="icon-192.png">
+<style>
+:root{--bg:#040a18;--panel:#0b1730;--line:#16305e;--tx:#eaf3ff;--mu:#8ba5cf;--ac:#1d8bff;--hot:#52b9ff}
+*{box-sizing:border-box;margin:0}html,body{height:100%}
+body{background:var(--bg);color:var(--tx);font:15px/1.4 "Trebuchet MS",system-ui,sans-serif;display:flex;flex-direction:column;padding-top:env(safe-area-inset-top)}
+#main{flex:1;overflow:auto;padding:16px 16px 12px;max-width:820px;width:100%;margin:0 auto}
+h1{font:700 26px Georgia,serif;margin-bottom:12px}h2{font:700 18px Georgia,serif;margin:18px 0 8px}
+.logo{background:linear-gradient(120deg,var(--ac),var(--hot));-webkit-background-clip:text;background-clip:text;color:transparent}
+button,input,select{font:inherit;color:inherit}button{background:none;border:0;cursor:pointer;padding:6px 8px;border-radius:8px}
+button:focus-visible,input:focus-visible{outline:2px solid var(--ac)}
+.btn{background:var(--ac);color:#fff;padding:9px 16px;border-radius:99px;font-weight:700}.btn.alt{background:var(--panel);border:1px solid var(--line)}
+input[type=text],input[type=search]{width:100%;background:var(--panel);border:1px solid var(--line);border-radius:99px;padding:11px 16px}
+.row{display:flex;align-items:center;gap:10px;padding:8px;border-radius:10px}.row:hover,.row.on{background:var(--panel)}
+.row.on .t{color:var(--hot)}.art{width:46px;height:46px;border-radius:8px;background:linear-gradient(135deg,var(--ac),var(--hot));flex:none;object-fit:cover;display:grid;place-items:center;font-size:20px}
+.m{flex:1;min-width:0;cursor:pointer}.t{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.a{color:var(--mu);font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pill{font-size:11px;border:1px solid var(--line);border-radius:99px;padding:1px 7px;color:var(--mu)}
+.tools{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0}.on-l{color:var(--hot)}
+#bar{background:var(--panel);border-top:1px solid var(--line);padding:10px 14px}
+#now{display:flex;align-items:center;gap:10px}#ctl{display:flex;justify-content:center;gap:4px;margin:4px 0}
+#ctl button{font-size:20px}#play{background:#fff;width:44px;height:44px;border-radius:50%;color:#041024}
+.seek{display:flex;gap:8px;align-items:center;font-size:12px;color:var(--mu)}.seek input{flex:1;accent-color:var(--hot)}
+nav{display:flex;background:var(--bg);border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom)}
+nav button{flex:1;padding:12px 4px;font-size:13px;color:var(--mu)}nav button.on{color:var(--tx);box-shadow:inset 0 -3px var(--hot)}
+.empty{color:var(--mu);padding:30px 8px;text-align:center}.card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:14px;margin:10px 0}
+.on-prem{color:#ffd166}
+@media(prefers-reduced-motion:no-preference){button{transition:background .15s}}
+.brand{display:none}
+@media(min-width:900px){body{display:grid;grid-template-columns:230px 1fr;grid-template-rows:1fr auto;grid-template-areas:"nav main" "bar bar"}
+#main{grid-area:main;max-width:none;margin:0;padding:24px 32px;background:linear-gradient(180deg,#0b2450,var(--bg) 320px)}#bar{grid-area:bar}
+nav{grid-area:nav;flex-direction:column;border:0;background:#000;padding:18px 10px;gap:4px}nav button{flex:none;text-align:left;font-size:15px;padding:12px 14px}nav button.on{box-shadow:none;background:var(--panel);color:var(--tx)}
+.brand{display:block;font:700 20px Georgia,serif;padding:6px 14px 18px}}
+.card input{margin:4px 0}.card label{display:block;color:var(--mu);font-size:13px;margin-top:8px}
+</style></head><body>
+<div id="main"></div>
+<div id="bar"><div id="now"><div class="art" id="cov">♪</div><div class="m"><div class="t" id="tt">Nothing playing</div><div class="a" id="ta">Pick a song to start</div></div><button id="lk" aria-label="Like">♡</button></div>
+<div class="seek"><span id="cur">0:00</span><input type="range" id="sk" min="0" max="1000" value="0" aria-label="Seek"><span id="dur">0:00</span></div>
+<div id="ctl"><button id="sh" aria-label="Shuffle">⇄</button><button id="pv" aria-label="Previous">⏮</button><button id="play" aria-label="Play">▶</button><button id="nx" aria-label="Next">⏭</button><button id="rp" aria-label="Repeat">↻</button><input type="range" id="vol" min="0" max="100" value="80" style="width:80px;accent-color:var(--ac)" aria-label="Volume"></div></div>
+<nav><div class="brand" id="brand"></div><button data-v="home">Search</button><button data-v="lib">Library</button><button data-v="pl">Playlists</button><button data-v="me">Premium</button><button data-v="admin">Admin</button></nav>
+<input type="file" id="lf" accept="image/*" hidden>
+<input type="file" id="fi" accept="audio/*" multiple hidden>
+<audio id="au" preload="auto"></audio>
+<script>
+const $=s=>document.querySelector(s),au=$('#au'),esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const ls=(k,d)=>{try{return JSON.parse(localStorage.getItem(k))??d}catch{return d}},sv=(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v))}catch{}};
+const S={lib:{},likes:ls('likes',[]),pls:ls('pls',{}),prem:ls('prem',false),logo:ls('logo',''),name:ls('name','Nova Music'),adm:false,q:[],i:-1,view:'home',sh:false,rp:0,res:[],cache:{},msg:''};
+const brandH=()=>(S.logo?`<img src="${S.logo}" alt="" style="height:30px;width:30px;border-radius:8px;vertical-align:middle;margin-right:8px">`:'')+`<span class="logo">${esc(S.name)}</span>`;
+const H=async x=>{try{return[...new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode('nova:'+x)))].map(b=>b.toString(16).padStart(2,'0')).join('')}catch{return btoa('nova:'+x)}};
+const pwOk=async x=>{const h=ls('apw',null);return h?(await H(x))==h:x=='admin'};
+// storage (IndexedDB)
+const dbp=new Promise(r=>{const q=indexedDB.open('nova',1);q.onupgradeneeded=()=>q.result.createObjectStore('t',{keyPath:'id'});q.onsuccess=()=>r(q.result)});
+const tx=async(m,f)=>{const d=await dbp;return new Promise((ok,no)=>{const q=f(d.transaction('t',m).objectStore('t'));q.onsuccess=()=>ok(q.result);q.onerror=no})};
+const put=t=>tx('readwrite',s=>s.put(t)),all=()=>tx('readonly',s=>s.getAll()),del=id=>tx('readwrite',s=>s.delete(id));
+const T=id=>S.cache[id]||S.lib[id];
+const remember=t=>{S.cache[t.id]=t};
+async function save(t){if(!S.lib[t.id]){const{blob,...m}=t;S.lib[t.id]=m;await put(m)}}
+const fmt=s=>isFinite(s)?Math.floor(s/60)+':'+String(Math.floor(s%60)).padStart(2,'0'):'0:00';
+// sources
+async function searchOnline(q){
+ const out=[];
+ const A=fetch('https://discoveryprovider.audius.co/v1/tracks/search?limit=15&app_name=NovaMusic&query='+encodeURIComponent(q)).then(r=>r.json()).then(j=>(j.data||[]).forEach(t=>out.push({id:'au'+t.id,title:t.title,artist:t.user?.name||'Audius',art:t.artwork?.['150x150'],src:`https://discoveryprovider.audius.co/v1/tracks/${t.id}/stream?app_name=NovaMusic`,from:'Audius'}))).catch(()=>{});
+ const I=fetch('https://archive.org/advancedsearch.php?output=json&rows=15&fl[]=identifier&fl[]=title&fl[]=creator&q='+encodeURIComponent(q+' AND mediatype:audio')).then(r=>r.json()).then(j=>(j.response?.docs||[]).forEach(d=>out.push({id:'ia'+d.identifier,title:d.title,artist:[].concat(d.creator||'Internet Archive')[0],ia:d.identifier,from:'Internet Archive'}))).catch(()=>{});
+ await Promise.all([A,I]);return out}
+async function resolve(t){if(t.src||!t.ia)return t.src;
+ const j=await (await fetch('https://archive.org/metadata/'+t.ia)).json();
+ const f=(j.files||[]).find(f=>/\.mp3$/i.test(f.name))||(j.files||[]).find(f=>/\.(ogg|m4a|flac)$/i.test(f.name));
+ if(!f)throw Error('No audio file');t.src=`https://archive.org/download/${t.ia}/${encodeURIComponent(f.name)}`;return t.src}
+// player
+async function playAt(i){S.i=i;const id=S.q[i],t=T(id);if(!t)return next();
+ $('#tt').textContent=t.title;$('#ta').textContent=t.artist;setCov(t);syncLike();render(true);
+ try{const full=(await tx('readonly',s=>s.get(id)))||{};
+  au.src=full.blob?URL.createObjectURL(full.blob):await resolve(t);await au.play()}catch(e){toast('Cannot play this track'+(navigator.onLine?'':' offline — download it first'))}
+ if('mediaSession'in navigator){navigator.mediaSession.metadata=new MediaMetadata({title:t.title,artist:t.artist,artwork:t.art?[{src:t.art}]:[]});
+  navigator.mediaSession.setActionHandler('previoustrack',prev);navigator.mediaSession.setActionHandler('nexttrack',next)}}
+function setCov(t){const c=$('#cov');c.innerHTML=t.art?`<img class="art" src="${esc(t.art)}" alt="">`:'♪'}
+function startList(ids,i){S.q=ids.slice();S.i=-1;playAt(i)}
+function next(){if(!S.q.length)return;let i=S.sh?Math.floor(Math.random()*S.q.length):S.i+1;if(i>=S.q.length){if(S.rp==1)i=0;else return}playAt(i)}
+function prev(){if(au.currentTime>3)au.currentTime=0;else playAt(Math.max(0,S.i-1))}
+au.onended=()=>S.rp==2?(au.currentTime=0,au.play()):next();
+au.ontimeupdate=()=>{$('#sk').value=au.duration?au.currentTime/au.duration*1000:0;$('#cur').textContent=fmt(au.currentTime);$('#dur').textContent=fmt(au.duration)};
+au.onplay=()=>$('#play').textContent='⏸';au.onpause=()=>$('#play').textContent='▶';
+$('#play').onclick=()=>au.src?(au.paused?au.play():au.pause()):0;$('#nx').onclick=next;$('#pv').onclick=prev;
+$('#sk').oninput=e=>au.duration&&(au.currentTime=e.target.value/1000*au.duration);$('#vol').oninput=e=>au.volume=e.target.value/100;
+$('#sh').onclick=e=>{S.sh=!S.sh;e.target.classList.toggle('on-l',S.sh)};
+$('#rp').onclick=e=>{S.rp=(S.rp+1)%3;e.target.textContent=S.rp==2?'↺1':'↻';e.target.classList.toggle('on-l',S.rp>0)};
+const cur=()=>S.q[S.i];
+function syncLike(){$('#lk').textContent=S.likes.includes(cur())?'♥':'♡';$('#lk').classList.toggle('on-l',S.likes.includes(cur()))}
+$('#lk').onclick=()=>cur()&&like(cur());
+async function like(id){const t=T(id);await save(t);const k=S.likes.indexOf(id);k<0?S.likes.push(id):S.likes.splice(k,1);sv('likes',S.likes);syncLike();render(true)}
+async function addToPl(id){const names=Object.keys(S.pls);const n=prompt('Add to which playlist?'+(names.length?'\nExisting: '+names.join(', '):'')+'\nType a name (new names create a playlist):');if(!n)return;
+ await save(T(id));(S.pls[n]=S.pls[n]||[]);if(!S.pls[n].includes(id))S.pls[n].push(id);sv('pls',S.pls);toast('Added to '+n)}
+async function download(id){if(!S.prem){toast('Downloads are a Premium feature. Turn on Premium in the Premium tab.');return}
+ const t=T(id);toast('Downloading…');try{const r=await fetch(await resolve(t));if(!r.ok)throw 0;const blob=await r.blob();S.lib[id]={...t,dl:1};delete S.lib[id].blob;await put({...S.lib[id],blob});toast('Saved for offline');render(true)}catch{toast('Download failed (source blocks it or no connection)')}}
+async function removeTrack(id){await del(id);delete S.lib[id];S.likes=S.likes.filter(x=>x!=id);for(const p in S.pls)S.pls[p]=S.pls[p].filter(x=>x!=id);sv('likes',S.likes);sv('pls',S.pls);render(true)}
+function toast(m){S.msg=m;const d=$('#toast')||Object.assign(document.body.appendChild(document.createElement('div')),{id:'toast'});d.style.cssText='position:fixed;left:50%;transform:translateX(-50%);bottom:190px;background:#000c;border:1px solid var(--line);padding:9px 16px;border-radius:99px;z-index:9;max-width:90%;text-align:center';d.textContent=m;d.hidden=false;clearTimeout(d.t);d.t=setTimeout(()=>d.hidden=true,3000)}
+// views
+const rowH=(t,ids,i,rm)=>`<div class="row ${cur()==t.id?'on':''}"><div class="m" data-play="${i}" data-ids="${esc(ids.join('|'))}" style="display:flex;gap:10px;align-items:center">${t.art?`<img class="art" src="${esc(t.art)}" alt="" loading="lazy">`:'<div class="art">♪</div>'}<div style="min-width:0"><div class="t">${esc(t.title)}</div><div class="a">${esc(t.artist)}${t.from?' · '+t.from:''} ${S.lib[t.id]?.dl?'<span class="pill">offline</span>':''}</div></div></div><button data-like="${esc(t.id)}" aria-label="Like" class="${S.likes.includes(t.id)?'on-l':''}">${S.likes.includes(t.id)?'♥':'♡'}</button><button data-pl="${esc(t.id)}" aria-label="Add to playlist">＋</button><button data-dl="${esc(t.id)}" aria-label="Download">⬇</button>${rm?`<button data-rm="${esc(t.id)}" aria-label="Remove">✕</button>`:''}</div>`;
+const list=(ids,rm)=>ids.length?ids.map((id,i)=>T(id)?rowH(T(id),ids,i,rm):'').join(''):'';
+function render(keep){const m=$('#main'),y=m.scrollTop;document.querySelectorAll('nav button').forEach(b=>b.classList.toggle('on',b.dataset.v==S.view));
+ let h='';const libIds=Object.keys(S.lib);
+ if(S.view=='home'){h=`<h1>${brandH()}</h1><input type="search" id="q" placeholder="Search songs on Audius and Internet Archive" value="${esc(S.qs||'')}">${navigator.onLine?'':'<p class="empty">You are offline. Open Library for your saved songs.</p>'}<div id="res">${S.res.length?list(S.res.map(t=>(remember(t),t.id))):'<p class="empty">Search any artist or song. Free, legal music only, no account needed.</p>'}</div>`}
+ if(S.view=='lib'){h=`<h1>Library</h1><div class="tools"><button class="btn" id="add">Add songs from this device</button><button class="btn alt" id="likedPlay">Play liked songs</button></div><h2>Liked songs</h2>${list(S.likes,0)||'<p class="empty">Tap ♡ on a song to like it.</p>'}<h2>All saved songs</h2>${list(libIds,1)||'<p class="empty">Add songs from your device, or like, download or add online songs to a playlist.</p>'}`}
+ if(S.view=='pl'){const ns=Object.keys(S.pls);h=`<h1>Playlists</h1><div class="tools"><button class="btn" id="newpl">New playlist</button></div>${ns.map(n=>`<div class="card"><b>${esc(n)}</b> <span class="pill">${S.pls[n].length} songs</span><div class="tools"><button class="btn alt" data-plplay="${esc(n)}">Play</button><button class="btn alt" data-pldl="${esc(n)}">Download all</button><button class="btn alt" data-pldel="${esc(n)}">Delete</button></div>${list(S.pls[n],0)}</div>`).join('')||'<p class="empty">Create a playlist, then use ＋ on any song.</p>'}`}
+ if(S.view=='me'){h=`<h1>${brandH()} Premium</h1><div class="card"><p class="${S.prem?'on-prem':''}"><b>${S.prem?'Premium is on':'Free plan'}</b></p><p class="a" style="margin:8px 0">Premium unlocks downloads, playlist downloads and offline playback of saved songs. This build has no payment system, so Premium is a switch on this device. Add a payment provider and a server to sell it.</p><button class="btn" id="prem">${S.prem?'Switch to Free':'Turn on Premium'}</button></div><div class="card"><b>Install</b><p class="a">Chrome, Edge or Safari: use "Install app" or "Add to Home Screen" (Mac Safari: File, Add to Dock). Songs you add or download stay on this device.</p></div>`}
+ if(S.view=='admin'){h=S.adm?`<h1>Admin</h1><div class="card"><b>Logo and name</b><div class="tools"><button class="btn" id="alogo">Upload logo</button><button class="btn alt" id="alogoRm">Remove logo</button></div><label for="an">App name</label><input type="text" id="an" value="${esc(S.name)}"><button class="btn" id="aname" style="margin-top:8px">Save name</button></div><div class="card"><b>Change password</b><label for="o">Current password</label><input type="password" id="o" style="width:100%;background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:10px"><label for="n">New password (4+ characters)</label><input type="password" id="n" style="width:100%;background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:10px"><button class="btn" id="apw" style="margin-top:8px">Change password</button></div><div class="card"><b>This device</b><p class="a">${libIds.length} saved songs, ${Object.keys(S.pls).length} playlists, ${S.likes.length} liked songs. Premium is ${S.prem?'on':'off'}.</p><div class="tools"><button class="btn alt" id="prem">${S.prem?'Switch to Free':'Turn on Premium'}</button><button class="btn alt" id="aclear">Delete all data</button><button class="btn alt" id="alogout">Log out</button></div></div>`:`<h1>Admin</h1><div class="card"><label for="ae">Email</label><input type="text" id="ae" autocomplete="username"><label for="ap">Password</label><input type="text" id="ap" style="-webkit-text-security:disc;width:100%;background:var(--panel);border:1px solid var(--line);border-radius:99px;padding:11px 16px" autocomplete="current-password"><button class="btn" id="alogin" style="margin-top:10px">Log in</button></div>`}
+$('#brand').innerHTML=brandH();m.innerHTML=h;m.scrollTop=keep?y:0}
+document.body.onclick=async e=>{const b=e.target.closest('button,[data-play]');if(!b)return;const d=b.dataset;
+ if(d.v){S.view=d.v;render()}else if(d.play!==undefined)startList(d.ids.split('|'),+d.play);
+ else if(d.like)like(d.like);else if(d.pl)addToPl(d.pl);else if(d.dl)download(d.dl);else if(d.rm)removeTrack(d.rm);
+ else if(d.plplay){const l=S.pls[d.plplay];l.length&&startList(l,0)}
+ else if(d.pldl){for(const id of S.pls[d.pldl])await download(id)}
+ else if(d.pldel){delete S.pls[d.pldel];sv('pls',S.pls);render(true)}
+ else if(b.id=='add')$('#fi').click();else if(b.id=='likedPlay'){S.likes.length&&startList(S.likes,0)}
+ else if(b.id=='newpl'){const n=prompt('Playlist name');if(n&&!S.pls[n]){S.pls[n]=[];sv('pls',S.pls);render(true)}}
+ else if(b.id=='prem'){S.prem=!S.prem;sv('prem',S.prem);render(true)}
+ else if(b.id=='alogin'){if($('#ae').value.trim().toLowerCase()=='admin@gmail.com'&&await pwOk($('#ap').value)){S.adm=true;render()}else toast('Wrong email or password')}
+ else if(b.id=='alogout'){S.adm=false;render()}
+ else if(b.id=='alogo')$('#lf').click();
+ else if(b.id=='alogoRm'){S.logo='';sv('logo','');render(true)}
+ else if(b.id=='aname'){S.name=$('#an').value.trim()||'Nova Music';sv('name',S.name);document.title=S.name;render(true);toast('Name saved')}
+ else if(b.id=='apw'){const n=$('#n').value;if(!(await pwOk($('#o').value)))toast('Current password is wrong');else if(n.length<4)toast('New password is too short');else{sv('apw',await H(n));$('#o').value=$('#n').value='';toast('Password changed')}}
+ else if(b.id=='aclear'&&confirm('Delete all songs, playlists and likes on this device?')){for(const id of Object.keys(S.lib))await del(id);S.lib={};S.likes=[];S.pls={};sv('likes',[]);sv('pls',{});render(true)}};
+$('#lf').onchange=e=>{const f=e.target.files[0];if(!f)return;const im=new Image();im.onload=()=>{const c=document.createElement('canvas');c.width=c.height=256;const x=c.getContext('2d'),q=Math.min(im.width,im.height);x.drawImage(im,(im.width-q)/2,(im.height-q)/2,q,q,0,0,256,256);S.logo=c.toDataURL('image/png');sv('logo',S.logo);render(true);toast('Logo updated')};im.src=URL.createObjectURL(f);e.target.value=''};
+document.addEventListener('keydown',async e=>{if(e.target.id=='q'&&e.key=='Enter'){S.qs=e.target.value.trim();if(!S.qs)return;$('#res').innerHTML='<p class="empty">Searching…</p>';S.res=await searchOnline(S.qs);render(true)}});
+$('#fi').onchange=async e=>{for(const f of e.target.files){const id='lo'+f.name+f.size;const t={id,title:f.name.replace(/\.[^.]+$/,''),artist:'This device',from:'Local'};S.lib[id]=t;await put({...t,blob:f,dl:1});S.lib[id].dl=1}e.target.value='';render(true)};
+addEventListener('online',()=>render(true));addEventListener('offline',()=>render(true));
+(async()=>{(await all()).forEach(t=>{const{blob,...m}=t;S.lib[t.id]=m});render();if('serviceWorker'in navigator&&location.protocol!='file:')navigator.serviceWorker.register('sw.js').catch(()=>{})})();
+</script></body></html>
